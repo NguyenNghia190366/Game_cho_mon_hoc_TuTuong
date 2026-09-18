@@ -4,7 +4,6 @@ export default function GameHUD({
   completedStages,
   insights,
   clarity,
-  message,
   stageGems = 0,
   requiredGems = 0,
   keyCount = 0,
@@ -67,7 +66,6 @@ export default function GameHUD({
         })}
       </div>
 
-      {message && <div className="hud-message">{message}</div>}
     </div>
   );
 }

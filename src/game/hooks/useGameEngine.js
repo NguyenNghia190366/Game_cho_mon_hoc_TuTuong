@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { GAME_STAGES } from "../data/gameStages";
 
+import { STAGE_GEM_KNOWLEDGE } from "../data/gemKnowledge";
+
 import { PLAYER_SPRITES } from "../data/playerSprites";
 
 import { DEADLY_GEM_QUESTION, STAGE_ITEM_RULES } from "../data/stageItems";
@@ -20,13 +22,15 @@ const CANVAS_HEIGHT = 540;
 
 const FLOOR_Y = 430;
 
+const STAGE_GATE_OFFSET = 270;
+
 /* Collision box của nhân vật */
 const PLAYER_WIDTH = 38;
 
 const PLAYER_HEIGHT = 72;
 
 /* Kích thước sprite hiển thị */
-const PLAYER_DRAW_WIDTH = 72;
+const PLAYER_DRAW_MAX_WIDTH = 100;
 
 const PLAYER_DRAW_HEIGHT = 96;
 
@@ -117,6 +121,20 @@ export default function useGameEngine() {
   const [activeItemQuestion, setActiveItemQuestion] = useState(null);
 
   const [activeKnowledge, setActiveKnowledge] = useState(null);
+
+  const [pickupNotice, setPickupNotice] = useState(null);
+
+  useEffect(() => {
+    if (!message) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setMessage((current) => (current === message ? "" : current));
+    }, 3000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [message]);
 
   /* ======================================================
      PRELOAD IMAGES
@@ -225,6 +243,8 @@ export default function useGameEngine() {
 
     setActiveKnowledge(null);
 
+    setPickupNotice(null);
+
     setGameState("playing");
   }, []);
 
@@ -282,8 +302,16 @@ export default function useGameEngine() {
 
     setActiveStage(nearest);
 
-    setGameState("dialog");
+    setGameState("challengeNotice");
   }, []);
+
+  const acceptStageChallenge = useCallback(() => {
+    if (!activeStage) {
+      return;
+    }
+
+    setGameState("dialog");
+  }, [activeStage]);
 
   const openInventory = useCallback(() => {
     if (gameState !== "playing") {
@@ -456,54 +484,55 @@ export default function useGameEngine() {
   ====================================================== */
 
   const answerStage = useCallback(
-    (selectedIndex) => {
-      if (!activeStage) {
+    (selectedIndex, question) => {
+      if (!activeStage || !question) {
         return false;
       }
 
-      const correct = selectedIndex === activeStage.answer;
+      const correct = selectedIndex === question.answer;
 
       if (!correct) {
         setClarity((old) => Math.max(0, old - 10));
 
-        setMessage(activeStage.hint);
-
         return false;
       }
 
-      /* Mark complete */
-
-      if (!completedRef.current.includes(activeStage.id)) {
-        const nextCompleted = [...completedRef.current, activeStage.id];
-
-        completedRef.current = nextCompleted;
-
-        setCompletedStages(nextCompleted);
-      }
-
-      setMessage(`Đã mở khóa: ${activeStage.unlock}`);
-
-      const isLastStage =
-        activeStage.id === GAME_STAGES[GAME_STAGES.length - 1].id;
-
-      window.setTimeout(() => {
-        setActiveStage(null);
-
-        setMessage("");
-
-        updateInventory([]);
-
-        if (isLastStage) {
-          setGameState("complete");
-        } else {
-          setGameState("playing");
-        }
-      }, 1200);
+      setMessage("");
 
       return true;
     },
     [activeStage],
   );
+
+  const completeStageChallenge = useCallback(() => {
+    if (!activeStage) {
+      return;
+    }
+
+    if (!completedRef.current.includes(activeStage.id)) {
+      const nextCompleted = [...completedRef.current, activeStage.id];
+
+      completedRef.current = nextCompleted;
+
+      setCompletedStages(nextCompleted);
+    }
+
+    const isLastStage =
+      activeStage.id === GAME_STAGES[GAME_STAGES.length - 1].id;
+
+    setActiveStage(null);
+    updateInventory([]);
+    setGameState("playing");
+    setMessage(
+      "Bạn đã hoàn thành thử thách, vui lòng trải nghiệm giai đoạn tiếp theo.",
+    );
+
+    if (isLastStage) {
+      window.setTimeout(() => {
+        setGameState("complete");
+      }, 3000);
+    }
+  }, [activeStage]);
 
   const answerItemQuestion = useCallback((selectedIndex) => {
     const question = activeItemQuestion;
@@ -565,6 +594,24 @@ export default function useGameEngine() {
     setGameState("playing");
   }, []);
 
+  const viewPickedItem = useCallback(() => {
+    if (!pickupNotice) {
+      return;
+    }
+
+    if (pickupNotice.kind === "knowledge") {
+      setActiveKnowledge(pickupNotice.payload);
+      setPickupNotice(null);
+      setGameState("knowledge");
+
+      return;
+    }
+
+    setActiveItemQuestion(pickupNotice.payload);
+    setPickupNotice(null);
+    setGameState("itemQuestion");
+  }, [pickupNotice]);
+
   function updateInventory(nextInventory) {
     inventoryRef.current = nextInventory;
 
@@ -583,7 +630,9 @@ export default function useGameEngine() {
       instanceId: item.id,
       type: "gem",
       stageId: item.stageId,
-      label: item.knowledge || `Viên ngọc ${item.gemId}`,
+      label: item.knowledge
+        ? `Viên ngọc ${item.gemId}: ${item.knowledge.title}`
+        : `Viên ngọc ${item.gemId}`,
       shortLabel: item.gemId,
       knowledge: item.knowledge || null,
       question: item.question
@@ -603,13 +652,16 @@ export default function useGameEngine() {
 
       keysRef.current = {};
       setMessage("");
-      setActiveKnowledge({
-        gemId: item.gemId,
-        text: item.knowledge,
-        year: stage?.year || item.stageId,
-        stageTitle: stage?.title || "Kiến thức lịch sử",
+      setPickupNotice({
+        kind: "knowledge",
+        payload: {
+          ...item.knowledge,
+          gemId: item.gemId,
+          year: stage?.year || item.stageId,
+          stageTitle: stage?.title || "Kiến thức lịch sử",
+        },
       });
-      setGameState("knowledge");
+      setGameState("pickupNotice");
     }
   }
 
@@ -657,9 +709,12 @@ export default function useGameEngine() {
   function startItemQuestion(item) {
     item.pending = true;
     pendingQuestionItemRef.current = item;
-    setActiveItemQuestion(item.question);
     keysRef.current = {};
-    setGameState("itemQuestion");
+    setPickupNotice({
+      kind: item.question.deadly ? "deadly" : "quiz",
+      payload: item.question,
+    });
+    setGameState("pickupNotice");
   }
 
   /* ======================================================
@@ -902,12 +957,9 @@ export default function useGameEngine() {
 
     for (let index = 0; index < GAME_STAGES.length - 1; index++) {
       const current = GAME_STAGES[index];
+      const nextStageStart = current.x + STAGE_GATE_OFFSET;
 
-      const next = GAME_STAGES[index + 1];
-
-      const midpoint = (current.x + next.x) / 2;
-
-      if (playerX >= midpoint) {
+      if (playerX >= nextStageStart) {
         detectedIndex = index + 1;
       }
     }
@@ -943,7 +995,7 @@ export default function useGameEngine() {
         return;
       }
 
-      const gateX = stage.x + 270;
+      const gateX = stage.x + STAGE_GATE_OFFSET;
 
       /*
          Không cho đi qua bên phải
@@ -1003,7 +1055,11 @@ export default function useGameEngine() {
           item.collected = false;
           startItemQuestion(item);
         } else {
-          setMessage("Đây là viên ngọc giả và không thể cho vào balo.");
+          setMessage(
+            item.gemId
+              ? `Ngọc ${item.gemId} là ngọc giả và không thể cho vào balo.`
+              : "Đây là viên ngọc giả và không thể cho vào balo.",
+          );
         }
 
         return;
@@ -1518,9 +1574,18 @@ export default function useGameEngine() {
      Canh giữa ảnh trên collision box.
     */
 
-    const drawX = screenX - (PLAYER_DRAW_WIDTH - player.width) / 2;
+    const spriteScale = Math.min(
+      PLAYER_DRAW_MAX_WIDTH / image.naturalWidth,
+      PLAYER_DRAW_HEIGHT / image.naturalHeight,
+    );
 
-    const drawY = player.y + player.height - PLAYER_DRAW_HEIGHT;
+    const drawWidth = image.naturalWidth * spriteScale;
+
+    const drawHeight = image.naturalHeight * spriteScale;
+
+    const drawX = screenX - (drawWidth - player.width) / 2;
+
+    const drawY = player.y + player.height - drawHeight;
 
     ctx.save();
 
@@ -1530,13 +1595,13 @@ export default function useGameEngine() {
     */
 
     if (player.direction === -1) {
-      ctx.translate(drawX + PLAYER_DRAW_WIDTH, 0);
+      ctx.translate(drawX + drawWidth, 0);
 
       ctx.scale(-1, 1);
 
-      ctx.drawImage(image, 0, drawY, PLAYER_DRAW_WIDTH, PLAYER_DRAW_HEIGHT);
+      ctx.drawImage(image, 0, drawY, drawWidth, drawHeight);
     } else {
-      ctx.drawImage(image, drawX, drawY, PLAYER_DRAW_WIDTH, PLAYER_DRAW_HEIGHT);
+      ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
     }
 
     ctx.restore();
@@ -1658,6 +1723,8 @@ export default function useGameEngine() {
 
     activeKnowledge,
 
+    pickupNotice,
+
     requiredGems: STAGE_ITEM_RULES[GAME_STAGES[currentStageIndex].id].requiredGems,
 
     stageGems: inventory.filter((item) => item.type === "gem").length,
@@ -1667,6 +1734,10 @@ export default function useGameEngine() {
     startGame,
 
     answerStage,
+
+    acceptStageChallenge,
+
+    completeStageChallenge,
 
     setControl,
 
@@ -1681,6 +1752,8 @@ export default function useGameEngine() {
     answerItemQuestion,
 
     closeKnowledge,
+
+    viewPickedItem,
 
     closeDialog,
   };
@@ -1738,26 +1811,15 @@ function createWorldObjects() {
 
   GAME_STAGES.forEach((stage, stageIndex) => {
     const rule = STAGE_ITEM_RULES[stage.id];
-    const specialQuestions = rule.specialQuestions || [];
-    const normalCount = rule.requiredGems - specialQuestions.length;
-    const gems = [
-      ...stage.story.slice(0, normalCount).map((knowledge, index) => ({
-        id: `${stage.id}-gem-${index + 1}`,
-        type: "gem",
-        stageId: stage.id,
-        gemId: `${stageIndex + 1}.${index + 1}`,
-        knowledge,
-        collected: false,
-      })),
-      ...specialQuestions.map((question) => ({
-        id: `${stage.id}-gem-${question.id}`,
-        type: "gem",
-        stageId: stage.id,
-        gemId: question.id,
-        question,
-        collected: false,
-      })),
-    ];
+    const stageKnowledge = STAGE_GEM_KNOWLEDGE[stage.id] || [];
+    const gems = stageKnowledge.map((knowledge) => ({
+      id: `${stage.id}-gem-${knowledge.id}`,
+      type: "gem",
+      stageId: stage.id,
+      gemId: knowledge.id,
+      knowledge,
+      collected: false,
+    }));
 
     const previousStage = GAME_STAGES[stageIndex - 1];
     const zoneStart = previousStage ? previousStage.x + 325 : 220;
@@ -1822,6 +1884,16 @@ function createWorldObjects() {
         id: `${stage.id}-fake-gem-${index + 1}`,
         type: "fakeGem",
         stageId: stage.id,
+        collected: false,
+      });
+    }
+
+    for (const gemId of rule.convertedFakeGemIds || []) {
+      looseItems.push({
+        id: `${stage.id}-converted-fake-gem-${gemId}`,
+        type: "fakeGem",
+        stageId: stage.id,
+        gemId,
         collected: false,
       });
     }

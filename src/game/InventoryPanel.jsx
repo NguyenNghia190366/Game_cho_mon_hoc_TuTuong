@@ -59,9 +59,15 @@ export default function InventoryPanel({ items, onClose }) {
             <h2>Ngọc {selectedItem.shortLabel}</h2>
 
             {selectedItem.knowledge && (
-              <p className="inventory-review-knowledge">
-                {selectedItem.knowledge}
-              </p>
+              <div className="inventory-review-knowledge">
+                <h3>{selectedItem.knowledge.title}</h3>
+                <strong>Sự kiện và nội dung</strong>
+                <p>{selectedItem.knowledge.event}</p>
+                <strong>Ý nghĩa đối với tư tưởng</strong>
+                <p>{selectedItem.knowledge.meaning}</p>
+                <strong>Mối liên hệ</strong>
+                <p>{selectedItem.knowledge.connection}</p>
+              </div>
             )}
 
             {selectedItem.question && (

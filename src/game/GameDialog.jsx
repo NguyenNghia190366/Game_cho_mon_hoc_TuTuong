@@ -1,120 +1,129 @@
 import { useMemo, useState } from "react";
 
-export default function GameDialog({ stage, onAnswer, onClose, skipStory = false }) {
-  const [page, setPage] = useState(skipStory ? stage.story.length : 0);
+import { STAGE_QUIZZES } from "./data/stageQuizzes";
 
+export default function GameDialog({ stage, onAnswer, onComplete, onClose }) {
+  const [questionIndex, setQuestionIndex] = useState(0);
   const [answerState, setAnswerState] = useState(null);
+  const [showExplanation, setShowExplanation] = useState(false);
+
+  const questions = STAGE_QUIZZES[stage.id] || [];
+  const question = questions[questionIndex];
 
   const shuffledOptions = useMemo(
     () =>
-      stage.options
+      (question?.options || [])
         .map((text, originalIndex) => ({ text, originalIndex }))
         .sort(() => Math.random() - 0.5),
-    [stage],
+    [question],
+  );
+  const correctDisplayIndex = shuffledOptions.findIndex(
+    (option) => option.originalIndex === question?.answer,
   );
 
-  if (!stage) {
+  const selectAnswer = (originalIndex, displayIndex) => {
+    if (showExplanation) {
+      return;
+    }
+
+    const correct = onAnswer(originalIndex, question);
+
+    setAnswerState({ selected: displayIndex, correct });
+
+    if (correct) {
+      setShowExplanation(true);
+    }
+  };
+
+  const acknowledgeExplanation = () => {
+    const isLastQuestion = questionIndex === questions.length - 1;
+
+    if (isLastQuestion) {
+      onComplete();
+      return;
+    }
+
+    setQuestionIndex((index) => index + 1);
+    setAnswerState(null);
+    setShowExplanation(false);
+  };
+
+  if (!question) {
     return null;
   }
 
-  const storyFinished = page >= stage.story.length;
-
-  const selectAnswer = (originalIndex, displayIndex) => {
-    const correct = onAnswer(originalIndex);
-
-    setAnswerState({
-      selected: displayIndex,
-      correct,
-    });
-  };
-
   return (
-    <div className="dialog-overlay">
-      <div className="game-dialog">
+    <div className="dialog-overlay" role="dialog" aria-modal="true">
+      <div className="game-dialog stage-quiz-dialog">
         <div className="dialog-year">{stage.year}</div>
 
         <h2>{stage.title}</h2>
 
-        {!storyFinished ? (
-          <>
-            <div className="story-page">
-              <span>
-                {page + 1}/{stage.story.length}
-              </span>
+        <div className="challenge-label">
+          THỬ THÁCH NHẬN THỨC · CÂU {questionIndex + 1}/{questions.length}
+        </div>
 
-              <p>{stage.story[page]}</p>
-            </div>
+        <h3>{question.question}</h3>
 
-            <div className="dialog-actions">
+        <div className="game-options">
+          {shuffledOptions.map((option, index) => {
+            let className = "game-option";
+
+            if (answerState?.correct && option.originalIndex === question.answer) {
+              className += " correct";
+            } else if (
+              answerState &&
+              !answerState.correct &&
+              index === answerState.selected
+            ) {
+              className += " wrong";
+            }
+
+            return (
               <button
+                key={`${option.originalIndex}-${option.text}`}
                 type="button"
-                className="secondary-button"
-                onClick={onClose}
+                className={className}
+                disabled={showExplanation}
+                onClick={() => selectAnswer(option.originalIndex, index)}
               >
-                Đóng
+                <span>{String.fromCharCode(65 + index)}</span>
+                {option.text}
               </button>
+            );
+          })}
+        </div>
 
-              <button
-                type="button"
-                className="primary-button"
-                onClick={() => setPage((old) => old + 1)}
-              >
-                {page === stage.story.length - 1 ? "Đến thử thách" : "Tiếp tục"}
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="challenge-label">THỬ THÁCH NHẬN THỨC</div>
+        {answerState && !answerState.correct && (
+          <div className="answer-hint">
+            Câu trả lời chưa đúng. Hãy đọc lại các lựa chọn và thử lại nhé.
+          </div>
+        )}
 
-            <h3>{stage.question}</h3>
+        {showExplanation && (
+          <div className="quiz-explanation">
+            <span>ĐÁP ÁN VÀ GIẢI THÍCH</span>
+            <h3>
+              Đáp án đúng: {String.fromCharCode(65 + correctDisplayIndex)}. {question.options[question.answer]}
+            </h3>
+            <p>{question.explanation}</p>
 
-            <div className="game-options">
-              {shuffledOptions.map((option, index) => {
-                let className = "game-option";
+            <button
+              type="button"
+              className="primary-button"
+              onClick={acknowledgeExplanation}
+            >
+              ĐÃ HIỂU
+            </button>
+          </div>
+        )}
 
-                if (answerState) {
-                  if (option.originalIndex === stage.answer) {
-                    className += " correct";
-                  } else if (index === answerState.selected) {
-                    className += " wrong";
-                  }
-                }
-
-                return (
-                  <button
-                    key={`${option.originalIndex}-${option.text}`}
-                    type="button"
-                    className={className}
-                    disabled={answerState?.correct}
-                    onClick={() => selectAnswer(option.originalIndex, index)}
-                  >
-                    <span>{String.fromCharCode(65 + index)}</span>
-
-                    {option.text}
-                  </button>
-                );
-              })}
-            </div>
-
-            {answerState && !answerState.correct && (
-              <div className="answer-hint">
-                <strong>Gợi ý:</strong>
-
-                {stage.hint}
-              </div>
-            )}
-
-            {answerState?.correct && (
-              <div className="unlock-box">
-                <span>MỞ KHÓA</span>
-
-                <strong>{stage.unlock}</strong>
-
-                <p>{stage.transformation}</p>
-              </div>
-            )}
-          </>
+        {!showExplanation && (
+          <div className="dialog-actions">
+            <button type="button" className="secondary-button" onClick={onClose}>
+              Đóng
+            </button>
+          </div>
         )}
       </div>
     </div>

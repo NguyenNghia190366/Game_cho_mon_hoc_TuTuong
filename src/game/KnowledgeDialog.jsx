@@ -14,7 +14,16 @@ export default function KnowledgeDialog({ knowledge, onContinue }) {
 
         <div className="knowledge-content">
           <span>{knowledge.gemId}</span>
-          <p>{knowledge.text}</p>
+          <h3>{knowledge.title}</h3>
+
+          <strong>Sự kiện và nội dung</strong>
+          <p>{knowledge.event}</p>
+
+          <strong>Ý nghĩa đối với tư tưởng</strong>
+          <p>{knowledge.meaning}</p>
+
+          <strong>Mối liên hệ</strong>
+          <p>{knowledge.connection}</p>
         </div>
 
         <div className="dialog-actions">

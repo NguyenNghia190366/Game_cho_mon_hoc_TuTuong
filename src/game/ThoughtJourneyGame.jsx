@@ -16,6 +16,10 @@ import ItemQuestionDialog from "./ItemQuestionDialog";
 
 import KnowledgeDialog from "./KnowledgeDialog";
 
+import PickupNotice from "./PickupNotice";
+
+import StageChallengeNotice from "./StageChallengeNotice";
+
 import { ITEM_ASSETS } from "./data/itemAssets";
 
 import useGameEngine from "./hooks/useGameEngine";
@@ -46,6 +50,8 @@ export default function ThoughtJourneyGame() {
 
     activeKnowledge,
 
+    pickupNotice,
+
     requiredGems,
 
     stageGems,
@@ -55,6 +61,10 @@ export default function ThoughtJourneyGame() {
     startGame,
 
     answerStage,
+
+    acceptStageChallenge,
+
+    completeStageChallenge,
 
     setControl,
 
@@ -69,6 +79,8 @@ export default function ThoughtJourneyGame() {
     answerItemQuestion,
 
     closeKnowledge,
+
+    viewPickedItem,
 
     closeDialog,
   } = useGameEngine();
@@ -98,13 +110,12 @@ export default function ThoughtJourneyGame() {
         completedStages={completedStages}
         insights={collectedInsights}
         clarity={clarity}
-        message={message}
         stageGems={stageGems}
         requiredGems={requiredGems}
         keyCount={keyCount}
       />
 
-      <GameCanvas canvasRef={canvasRef} />
+      <GameCanvas canvasRef={canvasRef} message={message} />
 
       <div className="game-controls">
         <button
@@ -154,8 +165,15 @@ export default function ThoughtJourneyGame() {
           key={activeStage.id}
           stage={activeStage}
           onAnswer={answerStage}
+          onComplete={completeStageChallenge}
           onClose={closeDialog}
-          skipStory
+        />
+      )}
+
+      {gameState === "challengeNotice" && activeStage && (
+        <StageChallengeNotice
+          stage={activeStage}
+          onAccept={acceptStageChallenge}
         />
       )}
 
@@ -175,6 +193,10 @@ export default function ThoughtJourneyGame() {
           knowledge={activeKnowledge}
           onContinue={closeKnowledge}
         />
+      )}
+
+      {gameState === "pickupNotice" && pickupNotice && (
+        <PickupNotice notice={pickupNotice} onView={viewPickedItem} />
       )}
     </section>
   );
