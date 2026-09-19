@@ -37,9 +37,15 @@ export default function HomePage() {
             triển tư tưởng.
           </p>
 
-          <Link to="/game" className="btn primary">
-            Vào game
-          </Link>
+          <div className="game-promo-actions">
+            <Link to="/game" className="btn primary">
+              Vào game
+            </Link>
+
+            <Link to="/leaderboard" className="btn ghost">
+              Xem bảng xếp hạng
+            </Link>
+          </div>
         </div>
       </section>
 

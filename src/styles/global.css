@@ -479,6 +479,18 @@ a {
   color: #f4c36b;
 }
 
+.game-promo-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.game-promo-actions .btn {
+  min-width: 210px;
+}
+
 /* =====================================================
    SECTION
 ===================================================== */

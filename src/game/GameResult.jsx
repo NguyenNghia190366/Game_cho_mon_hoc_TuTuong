@@ -1,45 +1,11 @@
 import { useMemo, useState } from "react";
-
-const LEADERBOARD_STORAGE_KEY = "hcm202_leaderboard_v1";
-
-function formatDuration(durationMs) {
-  const totalSeconds = Math.max(0, Math.floor(durationMs / 1000));
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  return `${hours} tiếng ${minutes} phút ${seconds} giây`;
-}
-
-function formatDateTime(value) {
-  if (!value) {
-    return "—";
-  }
-
-  return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "short",
-    timeStyle: "medium",
-  }).format(new Date(value));
-}
-
-function readLeaderboard() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(LEADERBOARD_STORAGE_KEY) || "[]");
-
-    return Array.isArray(saved) ? saved : [];
-  } catch {
-    return [];
-  }
-}
-
-function sortLeaderboard(entries) {
-  return [...entries].sort(
-    (first, second) =>
-      second.clarity - first.clarity ||
-      first.durationMs - second.durationMs ||
-      new Date(first.finishedAt).getTime() - new Date(second.finishedAt).getTime(),
-  );
-}
+import LeaderboardTable from "./LeaderboardTable";
+import {
+  LEADERBOARD_STORAGE_KEY,
+  formatDuration,
+  readLeaderboard,
+  sortLeaderboard,
+} from "./leaderboard";
 
 export default function GameResult({
   insights,
@@ -140,35 +106,7 @@ export default function GameResult({
         Xếp hạng theo độ sáng tỏ, sau đó ưu tiên người hoàn thành nhanh hơn.
       </p>
 
-      <div className="leaderboard-table-wrap">
-        <table className="leaderboard-table">
-          <thead>
-            <tr>
-              <th>Hạng</th>
-              <th>Tên người chơi</th>
-              <th>Bắt đầu</th>
-              <th>Hoàn thành</th>
-              <th>Tổng thời gian</th>
-              <th>Độ sáng tỏ</th>
-            </tr>
-          </thead>
-          <tbody>
-            {leaderboard.map((entry, index) => (
-              <tr
-                key={entry.id}
-                className={entry.id === playerEntryId ? "is-current-player" : ""}
-              >
-                <td>#{index + 1}</td>
-                <td>{entry.name}</td>
-                <td>{formatDateTime(entry.startedAt)}</td>
-                <td>{formatDateTime(entry.finishedAt)}</td>
-                <td>{entry.duration}</td>
-                <td>{entry.clarity}%</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <LeaderboardTable entries={leaderboard} currentEntryId={playerEntryId} />
 
       <button type="button" className="start-game-button" onClick={onRestart}>
         CHƠI LẠI
