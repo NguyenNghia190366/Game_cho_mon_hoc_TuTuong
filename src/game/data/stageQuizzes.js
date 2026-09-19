@@ -38,13 +38,13 @@ const QUESTION_BY_ID = Object.fromEntries(QUESTIONS.map((question) => [question.
 
 const STAGE_QUESTION_IDS = {
   "1911": ["Q01", "Q02", "Q03", "Q04"],
-  "1919-1920": ["Q05", "Q06", "Q07", "Q08"],
-  "1925-1930": ["Q09", "Q10", "Q11", "Q12"],
-  "1935": ["Q13", "Q14", "Q15", "Q16"],
-  "1941-1945": ["Q17", "Q19", "Q20"],
-  "1946-1954": ["Q21", "Q22", "Q23", "Q24"],
-  "1954-1966": ["Q26", "Q27", "Q28"],
-  "1969": ["Q29", "Q30", "Q32"],
+  "1911-1920": ["Q05", "Q06", "Q07", "Q08"],
+  "1920-1930": ["Q09", "Q10", "Q11", "Q12"],
+  "1930-1941": ["Q13", "Q14", "Q15", "Q16"],
+  "1941-1969": [
+    "Q17", "Q19", "Q20", "Q21", "Q22", "Q23", "Q24",
+    "Q26", "Q27", "Q28", "Q29", "Q30", "Q32",
+  ],
 };
 
 export const STAGE_QUIZZES = Object.fromEntries(
@@ -53,3 +53,25 @@ export const STAGE_QUIZZES = Object.fromEntries(
     ids.map((id) => QUESTION_BY_ID[id]),
   ]),
 );
+
+export function getStageQuizQuestions(stageId) {
+  const questions = STAGE_QUIZZES[stageId] || [];
+
+  if (stageId !== "1941-1969") {
+    return questions;
+  }
+
+  const shuffled = [...questions];
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const target = Math.floor(Math.random() * (index + 1));
+
+    [shuffled[index], shuffled[target]] = [shuffled[target], shuffled[index]];
+  }
+
+  return shuffled.slice(0, 8);
+}
+
+export function getStageQuestionCount(stageId) {
+  return stageId === "1941-1969" ? 8 : (STAGE_QUIZZES[stageId]?.length || 0);
+}

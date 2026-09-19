@@ -2,7 +2,7 @@ function gem(id, title, event, meaning, connection) {
   return { id, title, event, meaning, connection };
 }
 
-export const STAGE_GEM_KNOWLEDGE = {
+const LEGACY_STAGE_GEM_KNOWLEDGE = {
   "1911": [
     gem("1.1", "Nền tảng của chí hướng cứu nước", "Truyền thống quê hương, gia đình và dân tộc, cùng việc học tập và tiếp xúc với sách báo tiến bộ, góp phần hình thành tư tưởng yêu nước của Nguyễn Tất Thành.", "Lòng yêu nước của Người gắn với tình thương nhân dân và nhận thức về tình cảnh đất nước bị đô hộ. Đây là điểm xuất phát của hành trình tìm đường cứu nước.", "Cần phân biệt điểm xuất phát yêu nước với việc lựa chọn con đường cách mạng vô sản ở giai đoạn sau."),
     gem("1.2", "Lòng yêu nước thể hiện trong hành động", "Giáo trình nêu việc Nguyễn Tất Thành tham gia phong trào chống thuế ở Trung Kỳ năm 1908 và dạy học ở Trường Dục Thanh năm 1910. Khi dạy học, Người truyền thụ lòng yêu nước và những suy nghĩ về vận mệnh nước nhà.", "Những hoạt động này cho thấy tư tưởng yêu nước sớm được thể hiện trong thực tiễn, gắn với đời sống nhân dân và việc giáo dục thế hệ trẻ.", "Các trải nghiệm ấy góp phần làm sâu sắc suy nghĩ về Tổ quốc và yêu cầu tìm đường cứu nước."),
@@ -45,4 +45,20 @@ export const STAGE_GEM_KNOWLEDGE = {
     gem("8.2", "Năm thời kỳ của một quá trình liên tục", "Giáo trình chia quá trình thành năm thời kỳ: trước 1911; 1911–1920; 1920–1930; 1930–1941; 1941–1969. Các chặng trong game là cách chia nhỏ để học các mốc thuộc năm thời kỳ này.", "Quá trình đi từ hình thành lòng yêu nước và chí hướng, đến lựa chọn con đường; hình thành nội dung cơ bản; giữ vững đường lối qua thử thách; tiếp tục phát triển trong thực tiễn.", "Các thời kỳ liên hệ với nhau. Hình thành nội dung cơ bản năm 1930 không có nghĩa tư tưởng đã ngừng phát triển; thắng lợi năm 1945 cũng không kết thúc nhiệm vụ cách mạng."),
     gem("8.3", "Đọc bước ngoặt bằng quan hệ giữa thực tiễn và tư tưởng", "Trong toàn bộ phần II, những trải nghiệm, hoạt động lý luận, lựa chọn chính trị, tổ chức lực lượng và nhiệm vụ thực tiễn liên tục tác động đến quá trình phát triển tư tưởng. Giáo trình cũng nêu tư tưởng Hồ Chí Minh tiếp tục được Đảng vận dụng và phát triển sau năm 1969.", "Khi giải thích một mốc, cần nối hoàn cảnh với sự kiện, nhận thức hoặc đường lối được hình thành hay giữ vững, rồi làm rõ ý nghĩa đối với giai đoạn tiếp theo.", "Đây là cách tổng hợp nội dung chương để trả lời câu hỏi về những bước ngoặt; không phải lời thoại hoặc câu nói được gán cho nhân vật lịch sử."),
   ],
+};
+
+export const STAGE_GEM_KNOWLEDGE = {
+  "1911": LEGACY_STAGE_GEM_KNOWLEDGE["1911"],
+  "1911-1920": LEGACY_STAGE_GEM_KNOWLEDGE["1919-1920"],
+  "1920-1930": LEGACY_STAGE_GEM_KNOWLEDGE["1925-1930"],
+  "1930-1941": LEGACY_STAGE_GEM_KNOWLEDGE["1935"],
+  "1941-1969": [
+    ...LEGACY_STAGE_GEM_KNOWLEDGE["1941-1945"],
+    ...LEGACY_STAGE_GEM_KNOWLEDGE["1946-1954"],
+    ...LEGACY_STAGE_GEM_KNOWLEDGE["1954-1966"],
+    ...LEGACY_STAGE_GEM_KNOWLEDGE["1969"],
+  ].map((knowledge, index) => ({
+    ...knowledge,
+    id: `5.${index + 1}`,
+  })),
 };

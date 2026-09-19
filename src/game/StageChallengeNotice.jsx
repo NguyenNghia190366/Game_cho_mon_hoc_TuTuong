@@ -1,7 +1,7 @@
-import { STAGE_QUIZZES } from "./data/stageQuizzes";
+import { getStageQuestionCount } from "./data/stageQuizzes";
 
 export default function StageChallengeNotice({ stage, onAccept }) {
-  const questionCount = STAGE_QUIZZES[stage.id]?.length || 0;
+  const questionCount = getStageQuestionCount(stage.id);
 
   return (
     <div className="dialog-overlay" role="dialog" aria-modal="true">

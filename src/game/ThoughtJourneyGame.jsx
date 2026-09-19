@@ -52,6 +52,10 @@ export default function ThoughtJourneyGame() {
 
     pickupNotice,
 
+    startedAt,
+
+    finishedAt,
+
     requiredGems,
 
     stageGems,
@@ -94,6 +98,8 @@ export default function ThoughtJourneyGame() {
       <GameResult
         insights={collectedInsights}
         clarity={clarity}
+        startedAt={startedAt}
+        finishedAt={finishedAt}
         onRestart={startGame}
       />
     );

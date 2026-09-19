@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
+
+import { GAME_STAGES } from "./data/gameStages";
 
 export default function GameIntro({ onStart }) {
   const [screen, setScreen] = useState("intro");
@@ -33,31 +35,12 @@ export default function GameIntro({ onStart }) {
           </p>
 
           <div className="intro-timeline">
-            <span>1911</span>
-
-            <b>→</b>
-
-            <span>1920</span>
-
-            <b>→</b>
-
-            <span>1930</span>
-
-            <b>→</b>
-
-            <span>1935</span>
-
-            <b>→</b>
-
-            <span>1945</span>
-
-            <b>→</b>
-
-            <span>1954</span>
-
-            <b>→</b>
-
-            <span>1969</span>
+            {GAME_STAGES.map((stage, index) => (
+              <Fragment key={stage.id}>
+                {index > 0 && <b>→</b>}
+                <span>{stage.range}</span>
+              </Fragment>
+            ))}
           </div>
 
           <button

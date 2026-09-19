@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
 
-import { STAGE_QUIZZES } from "./data/stageQuizzes";
+import { getStageQuizQuestions } from "./data/stageQuizzes";
 
 export default function GameDialog({ stage, onAnswer, onComplete, onClose }) {
   const [questionIndex, setQuestionIndex] = useState(0);
   const [answerState, setAnswerState] = useState(null);
   const [showExplanation, setShowExplanation] = useState(false);
 
-  const questions = STAGE_QUIZZES[stage.id] || [];
+  const questions = useMemo(() => getStageQuizQuestions(stage.id), [stage.id]);
   const question = questions[questionIndex];
 
   const shuffledOptions = useMemo(

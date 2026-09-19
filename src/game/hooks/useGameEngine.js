@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { GAME_STAGES } from "../data/gameStages";
+import { GAME_BACKGROUND_ZONES, GAME_STAGES } from "../data/gameStages";
 
 import { STAGE_GEM_KNOWLEDGE } from "../data/gemKnowledge";
 
@@ -96,7 +96,9 @@ export default function useGameEngine() {
 
   const currentStageRef = useRef(0);
 
-  const previousStageRef = useRef(0);
+  const currentBackgroundZoneRef = useRef(0);
+
+  const previousBackgroundZoneRef = useRef(0);
 
   const backgroundTransitionRef = useRef(1);
 
@@ -113,6 +115,10 @@ export default function useGameEngine() {
   const [clarity, setClarity] = useState(100);
 
   const [message, setMessage] = useState("");
+
+  const [startedAt, setStartedAt] = useState(null);
+
+  const [finishedAt, setFinishedAt] = useState(null);
 
   const [currentStageIndex, setCurrentStageIndex] = useState(0);
 
@@ -161,16 +167,16 @@ export default function useGameEngine() {
 
     const backgrounds = {};
 
-    GAME_STAGES.forEach((stage) => {
-      if (!stage.background) {
+    GAME_BACKGROUND_ZONES.forEach((zone) => {
+      if (!zone.background) {
         return;
       }
 
       const image = new Image();
 
-      image.src = stage.background;
+      image.src = zone.background;
 
-      backgrounds[stage.id] = image;
+      backgrounds[zone.id] = image;
     });
 
     backgroundImagesRef.current = backgrounds;
@@ -201,6 +207,10 @@ export default function useGameEngine() {
   ====================================================== */
 
   const startGame = useCallback(() => {
+    setStartedAt(new Date().toISOString());
+
+    setFinishedAt(null);
+
     playerRef.current = createInitialPlayer();
 
     cameraRef.current.x = 0;
@@ -219,7 +229,9 @@ export default function useGameEngine() {
 
     currentStageRef.current = 0;
 
-    previousStageRef.current = 0;
+    currentBackgroundZoneRef.current = 0;
+
+    previousBackgroundZoneRef.current = 0;
 
     backgroundTransitionRef.current = 1;
 
@@ -528,6 +540,8 @@ export default function useGameEngine() {
     );
 
     if (isLastStage) {
+      setFinishedAt(new Date().toISOString());
+
       window.setTimeout(() => {
         setGameState("complete");
       }, 3000);
@@ -903,6 +917,8 @@ export default function useGameEngine() {
 
     detectCurrentStage(player.x);
 
+    detectBackgroundZone(player.x);
+
     /* ========================================
        PLAYER ANIMATION
     ======================================== */
@@ -968,13 +984,27 @@ export default function useGameEngine() {
       return;
     }
 
-    previousStageRef.current = currentStageRef.current;
-
     currentStageRef.current = detectedIndex;
 
-    backgroundTransitionRef.current = 0;
-
     setCurrentStageIndex(detectedIndex);
+  }
+
+  function detectBackgroundZone(playerX) {
+    let detectedIndex = 0;
+
+    for (let index = 1; index < GAME_BACKGROUND_ZONES.length; index += 1) {
+      if (playerX >= GAME_BACKGROUND_ZONES[index].startX) {
+        detectedIndex = index;
+      }
+    }
+
+    if (detectedIndex === currentBackgroundZoneRef.current) {
+      return;
+    }
+
+    previousBackgroundZoneRef.current = currentBackgroundZoneRef.current;
+    currentBackgroundZoneRef.current = detectedIndex;
+    backgroundTransitionRef.current = 0;
   }
 
   /* ======================================================
@@ -1173,13 +1203,13 @@ export default function useGameEngine() {
   ====================================================== */
 
   function drawBackground(ctx, canvas) {
-    const currentStage = GAME_STAGES[currentStageRef.current];
+    const currentZone = GAME_BACKGROUND_ZONES[currentBackgroundZoneRef.current];
 
-    const previousStage = GAME_STAGES[previousStageRef.current];
+    const previousZone = GAME_BACKGROUND_ZONES[previousBackgroundZoneRef.current];
 
-    const currentImage = backgroundImagesRef.current[currentStage?.id];
+    const currentImage = backgroundImagesRef.current[currentZone?.id];
 
-    const previousImage = backgroundImagesRef.current[previousStage?.id];
+    const previousImage = backgroundImagesRef.current[previousZone?.id];
 
     const transition = backgroundTransitionRef.current;
 
@@ -1725,6 +1755,10 @@ export default function useGameEngine() {
 
     pickupNotice,
 
+    startedAt,
+
+    finishedAt,
+
     requiredGems: STAGE_ITEM_RULES[GAME_STAGES[currentStageIndex].id].requiredGems,
 
     stageGems: inventory.filter((item) => item.type === "gem").length,
@@ -1820,6 +1854,26 @@ function createWorldObjects() {
       knowledge,
       collected: false,
     }));
+
+    if (rule.segments) {
+      let chestNumberOffset = 0;
+
+      rule.segments.forEach((segment) => {
+        const segmentGems = gems.filter((gem) => segment.gemIds.includes(gem.gemId));
+        const region = createRegionObjects(
+          stage,
+          segment,
+          segmentGems,
+          chestNumberOffset,
+        );
+
+        items.push(...region.items);
+        chests.push(...region.chests);
+        chestNumberOffset += segment.chestCount;
+      });
+
+      return;
+    }
 
     const previousStage = GAME_STAGES[stageIndex - 1];
     const zoneStart = previousStage ? previousStage.x + 325 : 220;
@@ -1920,6 +1974,96 @@ function createWorldObjects() {
   });
 
   return { items, chests };
+}
+
+function createRegionObjects(stage, rule, gems, chestNumberOffset = 0) {
+  const regionItems = [];
+  const regionChests = Array.from({ length: rule.chestCount }, (_, index) => {
+    const localNumber = index + 1;
+    const number = chestNumberOffset + localNumber;
+    const locked = rule.lockedChests.includes(localNumber);
+    const keyId = locked ? `${stage.id}-${rule.id}-key-${number}` : null;
+
+    return {
+      id: `${stage.id}-${rule.id}-chest-${number}`,
+      stageId: stage.id,
+      number,
+      x: distributeX(index, rule.chestCount, rule.startX, rule.endX),
+      locked,
+      keyId,
+      opened: false,
+      contents: [],
+    };
+  });
+
+  const shuffledGems = shuffle([...gems]);
+  const chestGems = shuffledGems.splice(0, rule.gemsInChests);
+  const targetChests = shuffle([...regionChests]).slice(
+    0,
+    Math.min(regionChests.length, chestGems.length),
+  );
+
+  chestGems.forEach((gem, index) => {
+    targetChests[index % targetChests.length].contents.push(gem);
+  });
+
+  const looseItems = [...shuffledGems];
+  const keyItems = [];
+
+  regionChests
+    .filter((chest) => chest.locked)
+    .forEach((chest) => {
+      keyItems.push({
+        id: `${chest.keyId}-pickup`,
+        type: "key",
+        stageId: stage.id,
+        keyId: chest.keyId,
+        chestNumber: chest.number,
+        x: Math.max(rule.startX, chest.x - 72),
+        y: FLOOR_Y - 70,
+        collected: false,
+      });
+    });
+
+  for (let index = 0; index < rule.fakeKeys; index += 1) {
+    looseItems.push({
+      id: `${stage.id}-${rule.id}-fake-key-${index + 1}`,
+      type: "fakeKey",
+      stageId: stage.id,
+      collected: false,
+    });
+  }
+
+  for (let index = 0; index < (rule.fakeGems || 0); index += 1) {
+    looseItems.push({
+      id: `${stage.id}-${rule.id}-fake-gem-${index + 1}`,
+      type: "fakeGem",
+      stageId: stage.id,
+      collected: false,
+    });
+  }
+
+  if (rule.deadlyFakeGem) {
+    looseItems.push({
+      id: `${stage.id}-${rule.id}-deadly-gem`,
+      type: "deadlyGem",
+      stageId: stage.id,
+      question: DEADLY_GEM_QUESTION,
+      collected: false,
+    });
+  }
+
+  shuffle(looseItems).forEach((item, index) => {
+    const lane = index % 3;
+
+    item.x = distributeX(index, looseItems.length, rule.startX, rule.endX);
+    item.y = FLOOR_Y - 70 - lane * 48;
+    regionItems.push(item);
+  });
+
+  regionItems.push(...keyItems);
+
+  return { items: regionItems, chests: regionChests };
 }
 
 function distributeX(index, count, start, end) {
